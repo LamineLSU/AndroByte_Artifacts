@@ -11,12 +11,12 @@ from collections import deque
 import networkx as nx
 from graphviz import Digraph
 
-GLOBAL_MODEL = "llama3.1:latest"
+GLOBAL_MODEL ="gemma3:latest"
+#GLOBAL_MODEL = "llama3.1:latest"
 #GLOBAL_MODEL = "deepseek-r1:7b"
-#GLOBAL_MODEL ="gemma3:latest"
 #GLOBAL_MODEL ="qwen3:latest"
 #GLOBAL_MODEL = "deepseek-coder-v2:16b"
-#GLOBAL_MODEL = "deepseek-coder:latest"
+
 MAX_TOKENS = 40000
 
 # Updated Tee class to write to multiple outputs and avoid flushing closed files
