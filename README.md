@@ -5,7 +5,7 @@
 ## Project Structure
 
 AndroByteTool/
-├── run_pipeline.py                   # Main entry point
+├── run_pipeline.py                   # Main entry point \n
 ├── parser/
 │   └── apk_parser.py                # APK parsing and extracts bytecode instructions
 ├── summarizer/
