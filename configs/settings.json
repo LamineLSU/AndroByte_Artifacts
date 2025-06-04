@@ -1,0 +1,8 @@
+{
+  "apk_folder": "D:/Testapk",
+  "output_base": "D:/UBCBAPK_Methods",
+  "model_name": "llama3.1:latest",
+  "chunk_size": 300,
+  "max_tokens": 40000,
+  "api_list_path": "resources/API.json"
+}
