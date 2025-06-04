@@ -1,3 +1,4 @@
+###pushed in github
 import os
 import json
 import requests
@@ -13,7 +14,6 @@ from graphviz import Digraph
 
 GLOBAL_MODEL ="gemma3:latest"
 #GLOBAL_MODEL = "llama3.1:latest"
-#GLOBAL_MODEL = "deepseek-r1:7b"
 #GLOBAL_MODEL ="qwen3:latest"
 #GLOBAL_MODEL = "deepseek-coder-v2:16b"
 
@@ -132,6 +132,48 @@ def get_sensitive_calls(method, sensitive_apis):
             sensitive_calls.append({"caller": caller_sig, "callee": api})
     return sensitive_calls
 
+
+def parse_field_signature(instruction: str):
+    """
+    Example:
+      iput-object v1, v2, Lcom/example/MyClass;->someField Ljava/lang/String;
+    => "Lcom/example/MyClass;->someField"
+    """
+    try:
+        parts = instruction.split(',', 1)
+        if len(parts) < 2:
+            return None
+        right_side = parts[1].strip()
+        tokens = right_side.split()
+        for tok in tokens:
+            if tok.startswith("l") or tok.startswith("L"):
+                return tok
+        return None
+    except:
+        return None
+    
+def build_field_maps(methods_data):
+    """
+    Build two dicts:
+      field_writers = { fieldSig: set([methodSig, ...]) }
+      field_readers = { fieldSig: set([methodSig, ...]) }
+    """
+    field_writers = {}
+    field_readers = {}
+    for method_sig, info in methods_data.items():
+        instructions = info.get("instructions", [])
+        for instr in instructions:
+            line = instr.strip().lower()
+            if line.startswith("iput") or line.startswith("sput"):
+                f = parse_field_signature(instr)
+                if f:
+                    field_writers.setdefault(f, set()).add(method_sig)
+            elif line.startswith("iget") or line.startswith("sget"):
+                f = parse_field_signature(instr)
+                if f:
+                    field_readers.setdefault(f, set()).add(method_sig)
+    return field_writers, field_readers
+
 def summarize_instructions_in_chunks(instructions_text, chunk_size=300):
     lines = instructions_text.splitlines()
     if len(lines) <= chunk_size:
@@ -189,7 +231,6 @@ def summarize_instructions_in_chunks(instructions_text, chunk_size=300):
             "3. `Next Methods = []` if a sink is hit.\n"
             "4. Do not reuse examples from the prompt.\n"   
         )
-
         try:
             partial_response_str = ollama_chat(partial_prompt).strip()
             parsed_json = extract_valid_json(partial_response_str)
@@ -209,15 +250,19 @@ def summarize_instructions_in_chunks(instructions_text, chunk_size=300):
 
     return json.dumps(partial_jsons, indent=4)
 
-
-
-
-def create_prompt(method, previous_summary="No previous summary available."):
+def create_prompt(method, candidate_field_methods, previous_summary="No previous summary available."):
     """
     Constructs the LLM prompt using the method's instructions and full signature.
     """
     #instructions_text = "\n".join(method.get("instructions", []))
     instructions_text = summarize_instructions_in_chunks("\n".join(method.get("instructions", [])), chunk_size=300)
+
+
+    if candidate_field_methods:
+        bridging_text = "\n".join(f"- {m}" for m in candidate_field_methods)
+    else:
+        bridging_text = "(none)"
+
     prompt = (
         "You are an expert in analyzing Android bytecode instructions. Your task is to trace how sensitive user data is originated, "
         "moved through registers, passed between methods, and possibly reaches sinks (e.g., logging, network, or storage).\n\n"
@@ -226,6 +271,8 @@ def create_prompt(method, previous_summary="No previous summary available."):
         f"- Previous Summary: {previous_summary}\n"
         f"- Method Signature: {method.get('method_signature', '')}\n"
         f"- Bytecode Instructions: {instructions_text}\n"
+        f"### Additional Info: Field-Based Readers\n"
+        f"Methods below *may* read a field that this method writes:{bridging_text}\n\n"
         "- Goal: Output JSON with 'Summary' and 'Next Methods'.\n\n"
         "**2. Identify Data Origin:**\n"
         "- Look for sensitive API calls (e.g., location, contacts, device ID).\n"
@@ -301,8 +348,6 @@ def generate_graph_png(graph, output_filename="Model_visited_graph.png", dpi = 3
         dot.edge(src_id, dst_id)
     dot.render(filename=output_filename, cleanup=True)
     print(f"Graph exported to {output_filename}")
-
-
 
 def refine_single_subgraph_summary(subgraph_dict):
     """
@@ -520,10 +565,8 @@ def integrate_chunked_summary_from_main(global_summaries):
 
 def main():
     start_time = time.time()
-    
-
-    MASTER_FOLDER = r"D:\UBCBAPK_Methods"
-    sensitive_api_path = r"api_path"
+    MASTER_FOLDER = r"APK foldder path"
+    sensitive_api_path = r"api list path"
     
     for subfolder in os.listdir(MASTER_FOLDER):
         subfolder_path = os.path.join(MASTER_FOLDER, subfolder)
@@ -557,6 +600,8 @@ def main():
             methods_data = load_json_file(methods_json_path)
             sensitive_api_data = load_json_file(sensitive_api_path)
             sensitive_apis = sensitive_api_data.get("sensitive_apis", [])
+
+            field_writers, field_readers = build_field_maps(methods_data)
             
             #  lookup dict using the complete signature as the key
             method_lookup = {}
@@ -614,7 +659,20 @@ def main():
                     
                     if current_sig not in global_summaries:
                         prev_summary = global_summaries.get(parent_sig, "No previous summary available.") if parent_sig else "No previous summary available."
-                        prompt = create_prompt(current_method_info, previous_summary=prev_summary)
+                        # Fields bridging
+                        fields_written = []
+                        for f, w_set in field_writers.items():
+                            if current_sig in w_set:
+                                fields_written.append(f)
+
+                        bridging_methods = set()
+                        for fw in fields_written:
+                            readers = field_readers.get(fw, set())
+                            for r_m in readers:
+                                if r_m != current_sig:
+                                    bridging_methods.add(r_m)
+                        
+                        prompt = create_prompt(current_method_info, bridging_methods, previous_summary=prev_summary)
                         try:
                             response = ollama_chat(prompt)
                             parsed = extract_valid_json(response)
@@ -663,8 +721,7 @@ def main():
             with open(output_refined_summaries_path, 'w', encoding='utf-8') as f:
                 json.dump(refined_subgraph_summaries, f, indent=4)
             print(f"Refined method summaries saved to {output_refined_summaries_path}")
-
-           
+  
             sensitive_only = []
             for subgraph_result in refined_subgraph_summaries:
                 label_value = subgraph_result.get("Label", "")
