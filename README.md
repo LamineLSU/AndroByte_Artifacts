@@ -3,18 +3,17 @@
 **AndroByteTool** is a static analysis tool designed to extract sensitive API call paths and summarize user data flow from Android APKs using bytecode-level analysis combined with LLM-based reasoning.
 
 ## Project Structure
-
 AndroByteTool/
-├── run_pipeline.py                   # Main entry point \n
+├── run_pipeline.py              # Main entry point
 ├── parser/
-│   └── apk_parser.py                # APK parsing and extracts bytecode instructions
+│   └── apk_parser.py            # APK parsing and extracts bytecode instructions
 ├── summarizer/
-│   ├── llm_summarizer.py             # summarization module + Ollama API + helper functions
-│       
+│   └── llm_summarizer.py        # Summarization module + Ollama API + helper functions
 ├── resources/
-│   └── API.json                    # JSON list of sensitive API signatures
+│   └── API.json                 # JSON list of sensitive API signatures
 ├── outputs/
-│   └── <apk_name>/...                # Output per APK
+│   └── <apk_name>/              # Output per APK
+
 
 
 Install via:
