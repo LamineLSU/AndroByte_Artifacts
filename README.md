@@ -58,8 +58,6 @@ Each APK folder under `outputs/` will contain:
 ---
 
 ## Notes
-- The tool skips external libraries like `androidx`, `kotlin`, etc.
-- Only methods with bytecode instructions and sensitive paths are included in the final graph.
 - Supports large context windows via chunked instruction summarization.
 
 ---
