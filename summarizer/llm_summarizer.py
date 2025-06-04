@@ -510,7 +510,7 @@ def main():
     
 
     MASTER_FOLDER = r"D:\UBCBAPK_Methods"
-    sensitive_api_path = r"C:\Eshita\vs_project\After\AndroByte_13March2025\AndroByte_Draft_03_17_25\10API.json"
+    sensitive_api_path = r"api_path"
     
     for subfolder in os.listdir(MASTER_FOLDER):
         subfolder_path = os.path.join(MASTER_FOLDER, subfolder)
