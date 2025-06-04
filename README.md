@@ -22,7 +22,7 @@ Install via:
 pip install -r requirements.txt
 
 
-Ensure [Ollama](https://ollama.com/) is running locally and your model (e.g., `gemma3.1:latest`) is available.
+Ensure [Ollama](https://ollama.com/) is running locally and  model (e.g., `gemma3.1:latest`) is available.
 
 ---
 
