@@ -3,6 +3,7 @@
 **AndroByteTool** is a static analysis tool designed to extract sensitive API call paths and summarize user data flow from Android APKs using bytecode-level analysis combined with LLM-based reasoning.
 
 ## Project Structure
+```text
 AndroByteTool/
 ├── run_pipeline.py              # Main entry point
 ├── parser/
